@@ -1,0 +1,44 @@
+#!/bin/bash
+
+HOST=$1
+WARNING=$2
+CRITICAL=$3
+
+core=2
+cores=$(snmpwalk -c public -v 2c $HOST HOST-RESOURCES-MIB::hrProcessorLoad | wc -l)
+cpuValues=''
+
+warnCore=''
+warnCounter=0
+
+critCore=''
+critCounter=0
+
+while [ $core -le $cores ] 
+do
+        cpuValue=$(snmpwalk -c public -v 2c $1 HOST-RESOURCES-MIB::hrProcessorLoad.$core | awk '/:/ {print $4}')
+        cpuValues+="$cpuValue "
+        if (( $cpuValue > $CRITICAL )); then
+                critCore+="CPU $(($core-1)) is in CRITICAL State; Value: $cpuValue\n"
+                core=$(( $core + 1 ))
+                critCounter=$(( $critCounter + 1 ))
+                continue
+        fi
+
+        if (( $cpuValue > $WARNING )); then
+                warnCore+="CPU $(($core-1)) is in WARNING State; Value: $cpuValue\n"
+                warnCounter=$(( $warnCounter + 1 ))
+        fi
+        core=$(( $core + 1 ))
+done
+
+if [ "$warnCounter" -eq "0" ] && [ "$critCounter" -eq "0" ]; then
+echo "Parameters OK - CPU: $cpuValues"
+exit 0
+elif [ "$critCounter" -gt "0" ]; then
+echo -e "Parameters CRITICAL - $critCore"
+exit 2
+elif [ "$warnCounter" -gt "0" ]; then
+echo -e "Parameters WARNING - $warnCore"
+exit 1
+fi
