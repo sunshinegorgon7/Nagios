@@ -1,0 +1,22 @@
+#!/bin/bash
+
+HOST=$1
+WARNING=$2
+CRITICAL=$3
+
+Total=$(snmpwalk -c public -v 2c $HOST HOST-RESOURCES-MIB::hrStorageSize.1 | awk '/:/ {print $4}' )
+Used=$(snmpwalk -c public -v 2c $HOST HOST-RESOURCES-MIB::hrStorageUsed.100 | awk '/:/ {print $4}')
+
+Free=$(( $Total - $Used ))
+FreeP=$(awk "BEGIN {print $Free/$Total*100}")
+
+if [[ $FreeP > $WARNING ]]; then
+echo "Parameters OK - Free Memory: $FreeP%"
+exit 0
+elif [[ $FreeP < $CRITICAL ]]; then
+echo "Parameters CRITICAL - Free Memory: $FreeP%"
+exit 2
+elif [[ $FreeP < $WARNING ]]; then
+echo "Parameters WARNING - Free Memory: $FreeP%"
+exit 1
+fi 
